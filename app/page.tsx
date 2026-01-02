@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Map, 
+  Map as MapIcon, 
   Trees, 
   AlertTriangle, 
   Wind, 
@@ -16,7 +16,9 @@ import {
   PawPrint,
   Sprout,
   CloudRain,
-  ArrowRight
+  ArrowRight,
+  Layers,
+  Maximize2
 } from 'lucide-react';
 
 // --- Types & Interfaces ---
@@ -31,22 +33,23 @@ interface Donation {
 
 interface ForestDataPoint {
   id: number;
-  lat: number; // % dari atas untuk SVG
-  lng: number; // % dari kiri untuk SVG
+  // Koordinat Geografis Asli
+  geoLat: number; 
+  geoLng: number;
   status: 'critical' | 'healthy' | 'recovering';
   location: string;
   intensity: number; // skala 1-10
 }
 
-// --- Mock Data (Simulasi Database) ---
+// --- Mock Data (Simulasi Database dengan Koordinat Asli Sumatera) ---
 
 const MOCK_FOREST_DATA: ForestDataPoint[] = [
-  { id: 1, lat: 20, lng: 30, status: 'critical', location: 'Aceh Besar', intensity: 8 }, 
-  { id: 2, lat: 25, lng: 35, status: 'recovering', location: 'Pidie', intensity: 3 },
-  { id: 3, lat: 40, lng: 45, status: 'critical', location: 'Langkat', intensity: 9 }, 
-  { id: 4, lat: 45, lng: 50, status: 'healthy', location: 'Taman Nasional Leuser', intensity: 1 },
-  { id: 5, lat: 60, lng: 55, status: 'critical', location: 'Perbatasan Riau', intensity: 7 },
-  { id: 6, lat: 35, lng: 25, status: 'recovering', location: 'Meulaboh', intensity: 4 },
+  { id: 1, geoLat: 5.39, geoLng: 95.58, status: 'critical', location: 'Aceh Besar', intensity: 8 }, 
+  { id: 2, geoLat: 5.05, geoLng: 96.02, status: 'recovering', location: 'Pidie', intensity: 3 },
+  { id: 3, geoLat: 3.75, geoLng: 98.22, status: 'critical', location: 'Langkat', intensity: 9 }, 
+  { id: 4, geoLat: 3.50, geoLng: 97.50, status: 'healthy', location: 'Taman Nasional Leuser', intensity: 1 },
+  { id: 5, geoLat: 0.50, geoLng: 101.45, status: 'critical', location: 'Perbatasan Riau', intensity: 7 },
+  { id: 6, geoLat: 4.14, geoLng: 96.12, status: 'recovering', location: 'Meulaboh', intensity: 4 },
 ];
 
 // --- Components ---
@@ -120,13 +123,12 @@ const Hero = ({ setActiveTab }: { setActiveTab: (t: string) => void }) => {
     <div className="relative min-h-screen flex items-center pt-20 overflow-hidden bg-slate-900">
       {/* Background Image with Overlay */}
       <div className="absolute inset-0 z-0">
-        {/* REPLACED next/image with img for standalone preview */}
         <img 
           src="https://images.unsplash.com/photo-1511497584788-876760111969?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80" 
           alt="Sumatra Rainforest" 
           className="w-full h-full object-cover opacity-60"
         />
-        <div className="absolute inset-0 bg-linear-to-r from-slate-900 via-slate-900/80 to-transparent"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/80 to-transparent"></div>
       </div>
 
       <div className="container mx-auto px-6 relative z-10 grid md:grid-cols-2 gap-12 items-center">
@@ -138,7 +140,7 @@ const Hero = ({ setActiveTab }: { setActiveTab: (t: string) => void }) => {
           
           <h1 className="text-5xl md:text-7xl font-bold text-white leading-tight">
             Pulihkan Hutan, <br/>
-            <span className="text-transparent bg-clip-text bg-linear-to-r from-emerald-400 to-teal-300">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">
               Cegah Bencana.
             </span>
           </h1>
@@ -159,7 +161,7 @@ const Hero = ({ setActiveTab }: { setActiveTab: (t: string) => void }) => {
               onClick={() => setActiveTab('map')}
               className="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-8 py-4 rounded-full font-bold text-lg transition-all backdrop-blur-sm flex items-center justify-center gap-2"
             >
-              <Map className="w-5 h-5" />
+              <MapIcon className="w-5 h-5" />
               Lihat Peta Kritis
             </button>
           </div>
@@ -182,7 +184,6 @@ const Hero = ({ setActiveTab }: { setActiveTab: (t: string) => void }) => {
 
         {/* Visual Decoration Right Side */}
         <div className="hidden md:block relative">
-           {/* Abstract Map Card */}
            <div className="absolute top-0 right-0 w-80 h-96 bg-slate-800/80 backdrop-blur-md rounded-3xl border border-slate-700 p-6 transform rotate-6 shadow-2xl animate-float">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-white font-bold flex items-center gap-2"><Activity className="text-red-500 w-5 h-5"/> Live Alert</h3>
@@ -234,7 +235,6 @@ const EducationSection = () => {
 
   return (
     <div className="py-24 bg-white relative overflow-hidden">
-      {/* Decor Elements */}
       <div className="absolute top-0 left-0 w-64 h-64 bg-emerald-100 rounded-full blur-3xl opacity-30 -translate-x-1/2 -translate-y-1/2"></div>
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-teal-100 rounded-full blur-3xl opacity-30 translate-x-1/3 translate-y-1/3"></div>
 
@@ -293,6 +293,88 @@ const EducationSection = () => {
 
 const InteractiveMap = () => {
   const [selectedPoint, setSelectedPoint] = useState<ForestDataPoint | null>(null);
+  const [isMapReady, setIsMapReady] = useState(false);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  // FIX: Using object | null instead of any to satisfy ESLint
+  const mapInstanceRef = useRef<object | null>(null);
+
+  // Initialize Leaflet Map
+  useEffect(() => {
+    // Check if scripts are already loaded
+    const existingScript = document.getElementById('leaflet-script');
+    const existingCss = document.getElementById('leaflet-css');
+
+    if (!existingCss) {
+      const link = document.createElement('link');
+      link.id = 'leaflet-css';
+      link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(link);
+    }
+
+    if (!existingScript) {
+      const script = document.createElement('script');
+      script.id = 'leaflet-script';
+      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      script.async = true;
+      script.onload = () => setIsMapReady(true);
+      document.body.appendChild(script);
+    } else {
+      // FIX: Use setTimeout to avoid synchronous state update in effect warning
+      setTimeout(() => setIsMapReady(true), 0);
+    }
+
+    return () => {
+      // Optional: Cleanup if needed
+    };
+  }, []);
+
+  // Render Map when ready
+  useEffect(() => {
+    // FIX: ESLint disable next line for accessing 'window.L' without types
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (isMapReady && mapContainerRef.current && !mapInstanceRef.current && (window as any).L) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const L = (window as any).L;
+      
+      // Initialize map centered on Sumatra
+      const map = L.map(mapContainerRef.current).setView([2.5, 99.5], 6); // Sumatra Coordinates
+      mapInstanceRef.current = map;
+
+      // Add CartoDB Dark Matter Tiles (Free & Nice looking)
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 19
+      }).addTo(map);
+
+      // Add Markers
+      MOCK_FOREST_DATA.forEach((point) => {
+        // Create custom HTML icon to keep our pulsating effect
+        const colorClass = point.status === 'critical' ? 'bg-red-500' : point.status === 'healthy' ? 'bg-emerald-500' : 'bg-yellow-500';
+        
+        const customIcon = L.divIcon({
+          className: 'custom-div-icon',
+          html: `
+            <div class="relative w-6 h-6 -ml-3 -mt-3">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${colorClass}"></span>
+              <span class="relative inline-flex rounded-full h-3 w-3 top-1.5 left-1.5 ${colorClass} shadow-lg ring-2 ring-white/20"></span>
+            </div>
+          `,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+
+        const marker = L.marker([point.geoLat, point.geoLng], { icon: customIcon }).addTo(map);
+        
+        // Handle Click
+        marker.on('click', () => {
+          setSelectedPoint(point);
+          map.setView([point.geoLat, point.geoLng], 8, { animate: true });
+        });
+      });
+    }
+  }, [isMapReady]);
 
   return (
     <div className="min-h-screen pt-24 bg-slate-50 pb-20">
@@ -306,57 +388,26 @@ const InteractiveMap = () => {
 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Map Interface */}
-          <div className="lg:col-span-2 bg-slate-900 rounded-3xl overflow-hidden shadow-2xl relative h-150 border border-slate-800 group">
+          <div className="lg:col-span-2 bg-slate-900 rounded-3xl overflow-hidden shadow-2xl relative h-[600px] border border-slate-800 group z-0">
             
-            {/* Map Controls */}
-            <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
-              <button className="bg-slate-800 p-2 rounded-lg text-white hover:bg-slate-700 border border-slate-700 hover:text-emerald-400 transition-colors"><Map size={20}/></button>
-              <button className="bg-slate-800 p-2 rounded-lg text-white hover:bg-slate-700 border border-slate-700 hover:text-emerald-400 transition-colors"><Wind size={20}/></button>
-              <button className="bg-slate-800 p-2 rounded-lg text-white hover:bg-slate-700 border border-slate-700 hover:text-emerald-400 transition-colors"><Droplets size={20}/></button>
+            {/* Map Controls (Overlay) */}
+            <div className="absolute top-4 right-4 z-[500] flex flex-col gap-2">
+              <button className="bg-slate-800 p-2 rounded-lg text-white hover:bg-slate-700 border border-slate-700 hover:text-emerald-400 transition-colors shadow-lg"><Layers size={20}/></button>
+              <button className="bg-slate-800 p-2 rounded-lg text-white hover:bg-slate-700 border border-slate-700 hover:text-emerald-400 transition-colors shadow-lg"><Maximize2 size={20}/></button>
             </div>
 
-            {/* Simulated Map of Sumatra (SVG Representation) */}
-            <div className="w-full h-full relative bg-[#0f172a] p-10 flex items-center justify-center overflow-hidden">
-               {/* Grid Lines */}
-               <div className="absolute inset-0 opacity-10" style={{backgroundImage: 'linear-gradient(#334155 1px, transparent 1px), linear-gradient(90deg, #334155 1px, transparent 1px)', backgroundSize: '40px 40px'}}></div>
-               
-               {/* Abstract Island Shape - Updated styling */}
-               <svg viewBox="0 0 200 300" className="h-full w-auto drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-                  <path 
-                    d="M60,10 C50,20 30,50 25,80 C20,110 35,130 50,150 C65,170 80,190 90,220 C100,250 120,280 140,290 C150,280 160,250 150,220 C140,190 120,150 110,120 C100,90 90,50 80,20 Z" 
-                    fill="#064e3b" 
-                    stroke="#10b981" 
-                    strokeWidth="1"
-                    className="hover:fill-emerald-900 transition-colors duration-500 opacity-90"
-                  />
-                  {/* Labels */}
-                  <text x="70" y="40" className="text-[8px] fill-emerald-300 opacity-60 font-sans font-bold tracking-widest">ACEH</text>
-                  <text x="80" y="100" className="text-[8px] fill-emerald-300 opacity-60 font-sans font-bold tracking-widest">SUMUT</text>
-                  <text x="100" y="180" className="text-[8px] fill-emerald-300 opacity-60 font-sans font-bold tracking-widest">RIAU</text>
-                  <text x="115" y="240" className="text-[8px] fill-emerald-300 opacity-60 font-sans font-bold tracking-widest">SUMSEL</text>
-               </svg>
-
-               {/* Data Points */}
-               {MOCK_FOREST_DATA.map((point) => (
-                 <button
-                    key={point.id}
-                    onClick={() => setSelectedPoint(point)}
-                    style={{ top: `${point.lat}%`, left: `${point.lng}%` }}
-                    className={`absolute transform -translate-x-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center transition-all duration-300 hover:scale-125 focus:outline-none group/point`}
-                 >
-                    <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${point.status === 'critical' ? 'bg-red-500' : point.status === 'healthy' ? 'bg-emerald-500' : 'bg-yellow-500'}`}></span>
-                    <span className={`relative inline-flex rounded-full h-3 w-3 shadow-lg ${point.status === 'critical' ? 'bg-red-500' : point.status === 'healthy' ? 'bg-emerald-500' : 'bg-yellow-500'} ring-2 ring-white/20`}></span>
-                    
-                    {/* Tooltip on hover */}
-                    <span className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover/point:opacity-100 transition-opacity pointer-events-none z-20">
-                      {point.location}
-                    </span>
-                 </button>
-               ))}
+            {/* LEAFLET MAP CONTAINER */}
+            <div id="map" ref={mapContainerRef} className="w-full h-full bg-[#1a1a1a]">
+              {!isMapReady && (
+                <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 gap-3">
+                  <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-sm">Memuat Peta Satelit...</p>
+                </div>
+              )}
             </div>
 
             {/* Legend */}
-            <div className="absolute bottom-6 left-6 bg-slate-800/90 backdrop-blur px-4 py-3 rounded-xl border border-slate-700 text-xs text-white">
+            <div className="absolute bottom-6 left-6 z-[500] bg-slate-900/90 backdrop-blur px-4 py-3 rounded-xl border border-slate-700 text-xs text-white shadow-xl">
                <div className="flex items-center gap-2 mb-2"><span className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]"></span> Deforestasi Kritis</div>
                <div className="flex items-center gap-2 mb-2"><span className="w-2 h-2 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.6)]"></span> Pemulihan</div>
                <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></span> Hutan Terjaga</div>
@@ -403,13 +454,13 @@ const InteractiveMap = () => {
                 </div>
               ) : (
                 <div className="h-48 flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50">
-                  <Map className="w-8 h-8 mb-2 opacity-50"/>
+                  <MapIcon className="w-8 h-8 mb-2 opacity-50"/>
                   <p className="text-sm">Pilih titik di peta untuk melihat detail</p>
                 </div>
               )}
             </div>
 
-            <div className="bg-linear-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+            <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
                <div className="absolute -right-10 -bottom-10 opacity-20 transform rotate-12">
                  <Trees size={120} />
                </div>
@@ -544,10 +595,10 @@ const DonationSection = () => {
                <span className="text-sm text-emerald-600 font-medium cursor-pointer hover:underline">Lihat Semua</span>
             </div>
 
-            <div className="space-y-4 max-h-125 overflow-y-auto pr-2 custom-scrollbar">
+            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
               {donations.map((d, i) => (
                 <div key={d.id} className={`bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-start gap-4 transition-all hover:shadow-md ${i === 0 ? 'animate-fade-in' : ''}`}>
-                   <div className="w-10 h-10 rounded-full bg-linear-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm">
+                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm">
                      {d.name.charAt(0)}
                    </div>
                    <div className="flex-1">
@@ -599,7 +650,7 @@ const Footer = () => (
       </div>
     </div>
     <div className="container mx-auto px-6 mt-12 pt-8 border-t border-slate-800 text-center text-xs text-slate-500">
-      &copy; 2025 TerraSumatra.
+      &copy; 2024 TerraSumatra Project. Built with Next.js & TypeScript.
     </div>
   </footer>
 );
