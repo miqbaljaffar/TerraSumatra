@@ -233,15 +233,20 @@ const InteractiveMap = () => {
                {/* Grid Lines */}
                <div className="absolute inset-0 opacity-10" style={{backgroundImage: 'linear-gradient(#334155 1px, transparent 1px), linear-gradient(90deg, #334155 1px, transparent 1px)', backgroundSize: '40px 40px'}}></div>
                
-               {/* Abstract Island Shape */}
+               {/* Abstract Island Shape - Updated styling */}
                <svg viewBox="0 0 200 300" className="h-full w-auto drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]">
                   <path 
                     d="M60,10 C50,20 30,50 25,80 C20,110 35,130 50,150 C65,170 80,190 90,220 C100,250 120,280 140,290 C150,280 160,250 150,220 C140,190 120,150 110,120 C100,90 90,50 80,20 Z" 
-                    fill="#1e293b" 
-                    stroke="#334155" 
-                    strokeWidth="2"
-                    className="hover:fill-slate-800 transition-colors duration-500"
+                    fill="#064e3b" 
+                    stroke="#10b981" 
+                    strokeWidth="1"
+                    className="hover:fill-emerald-900 transition-colors duration-500 opacity-90"
                   />
+                  {/* Labels */}
+                  <text x="70" y="40" className="text-[8px] fill-emerald-300 opacity-60 font-sans font-bold tracking-widest">ACEH</text>
+                  <text x="80" y="100" className="text-[8px] fill-emerald-300 opacity-60 font-sans font-bold tracking-widest">SUMUT</text>
+                  <text x="100" y="180" className="text-[8px] fill-emerald-300 opacity-60 font-sans font-bold tracking-widest">RIAU</text>
+                  <text x="115" y="240" className="text-[8px] fill-emerald-300 opacity-60 font-sans font-bold tracking-widest">SUMSEL</text>
                </svg>
 
                {/* Data Points */}
@@ -250,19 +255,24 @@ const InteractiveMap = () => {
                     key={point.id}
                     onClick={() => setSelectedPoint(point)}
                     style={{ top: `${point.lat}%`, left: `${point.lng}%` }}
-                    className={`absolute transform -translate-x-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center transition-all duration-300 hover:scale-125 focus:outline-none`}
+                    className={`absolute transform -translate-x-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center transition-all duration-300 hover:scale-125 focus:outline-none group/point`}
                  >
                     <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${point.status === 'critical' ? 'bg-red-500' : point.status === 'healthy' ? 'bg-emerald-500' : 'bg-yellow-500'}`}></span>
-                    <span className={`relative inline-flex rounded-full h-3 w-3 ${point.status === 'critical' ? 'bg-red-500' : point.status === 'healthy' ? 'bg-emerald-500' : 'bg-yellow-500'}`}></span>
+                    <span className={`relative inline-flex rounded-full h-3 w-3 shadow-lg ${point.status === 'critical' ? 'bg-red-500' : point.status === 'healthy' ? 'bg-emerald-500' : 'bg-yellow-500'} ring-2 ring-white/20`}></span>
+                    
+                    {/* Tooltip on hover */}
+                    <span className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover/point:opacity-100 transition-opacity pointer-events-none z-20">
+                      {point.location}
+                    </span>
                  </button>
                ))}
             </div>
 
             {/* Legend */}
             <div className="absolute bottom-6 left-6 bg-slate-800/90 backdrop-blur px-4 py-3 rounded-xl border border-slate-700 text-xs text-white">
-               <div className="flex items-center gap-2 mb-2"><span className="w-2 h-2 rounded-full bg-red-500"></span> Deforestasi Kritis</div>
-               <div className="flex items-center gap-2 mb-2"><span className="w-2 h-2 rounded-full bg-yellow-500"></span> Pemulihan</div>
-               <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> Hutan Terjaga</div>
+               <div className="flex items-center gap-2 mb-2"><span className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]"></span> Deforestasi Kritis</div>
+               <div className="flex items-center gap-2 mb-2"><span className="w-2 h-2 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.6)]"></span> Pemulihan</div>
+               <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></span> Hutan Terjaga</div>
             </div>
           </div>
 
