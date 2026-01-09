@@ -650,7 +650,7 @@ const Footer = () => (
       </div>
     </div>
     <div className="container mx-auto px-6 mt-12 pt-8 border-t border-slate-800 text-center text-xs text-slate-500">
-      &copy; 2024 TerraSumatra Project. Built with Next.js & TypeScript.
+      &copy; 2025 TerraSumatra Project.
     </div>
   </footer>
 );
