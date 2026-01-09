@@ -12,11 +12,64 @@ export interface ForestDataPoint {
   geoLng: number;
   status: 'critical' | 'healthy' | 'recovering';
   location: string;
-  intensity: number; // skala 1-10
-  year?: number; // Menambahkan tahun untuk filter
+  intensity: number; 
+  year?: number; 
 }
 
-// Data simulasi Hotspots untuk Heatmap (Area Rawan Kebakaran/Perambahan)
+// Model untuk Success Stories
+export interface SuccessStory {
+  id: number;
+  title: string;
+  slug: string;
+  author: string;
+  date: string;
+  category: 'Petani Lokal' | 'Komunitas Adat' | 'Restorasi';
+  excerpt: string;
+  content: string;
+  imageUrl: string;
+  readTime: string;
+}
+
+export const MOCK_STORIES: SuccessStory[] = [
+  {
+    id: 1,
+    title: "Bangkitnya Kopi Hutan Gayo: Kisah Pak Darwin",
+    slug: "kisah-pak-darwin-gayo",
+    author: "Tim Terra",
+    date: "12 Mei 2024",
+    category: "Petani Lokal",
+    excerpt: "Bagaimana sistem agroforestri menyelamatkan lahan miring di Gayo sekaligus meningkatkan pendapatan petani hingga 40%.",
+    content: "...",
+    imageUrl: "https://images.unsplash.com/photo-1501333198107-b09e436734a7?q=80&w=800&auto=format&fit=crop",
+    readTime: "5 menit"
+  },
+  {
+    id: 2,
+    title: "Suku Anak Dalam: Penjaga Terakhir Rimba Jambi",
+    slug: "penjaga-rimba-jambi",
+    author: "Rina Kartika",
+    date: "05 Juni 2024",
+    category: "Komunitas Adat",
+    excerpt: "Kolaborasi pemetaan wilayah adat untuk mencegah konflik lahan dan melestarikan pohon-pohon sialang tempat lebah bersarang.",
+    content: "...",
+    imageUrl: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=800&auto=format&fit=crop",
+    readTime: "8 menit"
+  },
+  {
+    id: 3,
+    title: "Transformasi Bekas Tambang Menjadi Hutan Madu",
+    slug: "transformasi-bekas-tambang",
+    author: "Andi Wijaya",
+    date: "20 Juni 2024",
+    category: "Restorasi",
+    excerpt: "Proyek pemulihan lahan di Bangka Belitung yang kini menjadi habitat baru bagi flora lokal dan sumber madu hutan.",
+    content: "...",
+    imageUrl: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=800&auto=format&fit=crop",
+    readTime: "6 menit"
+  }
+];
+
+// ... Data MOCK_HEATMAP_DATA & MOCK_FOREST_DATA tetap sama ...
 export const MOCK_HEATMAP_DATA: [number, number, number][] = [
   [5.2, 95.8, 0.8], [5.1, 95.9, 0.5], [4.8, 96.2, 0.7],
   [3.8, 98.1, 0.9], [3.6, 98.3, 0.6], [3.4, 97.6, 0.8],
@@ -24,7 +77,6 @@ export const MOCK_HEATMAP_DATA: [number, number, number][] = [
   [4.2, 96.3, 0.4], [4.1, 96.0, 0.6], [3.9, 97.2, 0.8]
 ];
 
-// Data Historis untuk Timeline (Simulasi perubahan tutupan hutan)
 export const MOCK_TIMELINE_DATA: Record<number, [number, number, number][]> = {
   2015: [[5.2, 95.8, 0.2], [3.8, 98.1, 0.3], [0.6, 101.3, 0.1], [4.2, 96.3, 0.2]],
   2018: [[5.2, 95.8, 0.4], [3.8, 98.1, 0.5], [0.6, 101.3, 0.3], [4.2, 96.3, 0.4], [1.2, 102.0, 0.4]],
@@ -33,7 +85,6 @@ export const MOCK_TIMELINE_DATA: Record<number, [number, number, number][]> = {
   2025: MOCK_HEATMAP_DATA
 };
 
-// Simulasi Database dengan Koordinat Asli Sumatera
 export const MOCK_FOREST_DATA: ForestDataPoint[] = [
   { id: 1, geoLat: 5.39, geoLng: 95.58, status: 'critical', location: 'Aceh Besar', intensity: 8 }, 
   { id: 2, geoLat: 5.05, geoLng: 96.02, status: 'recovering', location: 'Pidie', intensity: 3 },
