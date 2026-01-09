@@ -6,6 +6,14 @@ export interface Donation {
   timestamp: Date;
 }
 
+export interface LeaderboardEntry {
+  id: number;
+  name: string;
+  amount: number;
+  type: 'individual' | 'corporate';
+  avatar?: string;
+}
+
 export interface ForestDataPoint {
   id: number;
   geoLat: number; 
@@ -115,4 +123,14 @@ export const EDUCATION_FACTS = [
     title: "Ekonomi Hijau",
     desc: "Pemberdayaan masyarakat lokal melalui agroforestri (kopi, kakao) mengurangi ketergantungan pada penebangan liar."
   }
+];
+
+export const MOCK_LEADERBOARD: LeaderboardEntry[] = [
+  { id: 1, name: "PT. Eco Nusantara", amount: 50000000, type: "corporate" },
+  { id: 2, name: "Yayasan Bumi Hijau", amount: 25000000, type: "corporate" },
+  { id: 3, name: "Sultan Andara", amount: 15000000, type: "individual" },
+  { id: 4, name: "CV. Sawit Lestari", amount: 10000000, type: "corporate" },
+  { id: 5, name: "Sarah Amalia", amount: 7500000, type: "individual" },
+  { id: 6, name: "Komunitas Gowes Jambi", amount: 5000000, type: "individual" },
+  { id: 7, name: "Dr. Budi Santoso", amount: 2500000, type: "individual" },
 ];

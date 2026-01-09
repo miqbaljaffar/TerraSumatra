@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CreditCard, CheckCircle2, Users } from 'lucide-react';
-import { Donation } from '../lib/definitions';
+import { CreditCard, CheckCircle2, Users, Trophy, Medal, Building2, User, Crown } from 'lucide-react';
+import { Donation, MOCK_LEADERBOARD } from '../lib/definitions';
 
 export default function DonationSection() {
   const [amount, setAmount] = useState<number>(50000);
@@ -14,6 +14,7 @@ export default function DonationSection() {
   const [name, setName] = useState("");
   const [message, setMessage] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
+  const [viewMode, setViewMode] = useState<'recent' | 'leaderboard'>('leaderboard');
 
   const handleDonate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,113 +32,233 @@ export default function DonationSection() {
     setTimeout(() => setShowSuccess(false), 3000);
   };
 
+  const getRankIcon = (index: number) => {
+    switch (index) {
+      case 0: return <Crown className="w-5 h-5 text-yellow-500 fill-yellow-500" />;
+      case 1: return <Medal className="w-5 h-5 text-slate-400 fill-slate-400" />;
+      case 2: return <Medal className="w-5 h-5 text-amber-700 fill-amber-700" />;
+      default: return <span className="text-slate-400 font-bold text-sm">#{index + 1}</span>;
+    }
+  };
+
+  const getCardStyle = (index: number) => {
+    switch (index) {
+      case 0: return 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200';
+      case 1: return 'bg-gradient-to-r from-slate-50 to-gray-50 border-slate-200';
+      case 2: return 'bg-gradient-to-r from-orange-50 to-amber-50/50 border-orange-200';
+      default: return 'bg-white border-slate-100';
+    }
+  };
+
   return (
-    <div className="min-h-screen pt-24 pb-20 bg-white">
+    <div className="min-h-screen pt-24 pb-20 bg-slate-50">
       <div className="container mx-auto px-6">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold text-slate-800 mb-4">Bergabung dalam <span className="text-emerald-600">Reboisasi</span></h2>
           <p className="text-slate-600 max-w-2xl mx-auto">
-            Setiap Rp 50.000 setara dengan 1 bibit pohon produktif yang akan ditanam dan dirawat oleh petani lokal di area kritis.
+            Setiap donasi Anda dikonversi menjadi bibit pohon yang ditanam langsung oleh petani lokal. Bergabunglah dengan leaderboard pahlawan bumi.
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-12 max-w-5xl mx-auto">
-          {/* Donation Form */}
-          <div className="bg-white rounded-3xl p-8 shadow-xl border border-slate-100 relative overflow-hidden">
+        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 max-w-6xl mx-auto">
+          {/* Left Column: Donation Form */}
+          <div className="bg-white rounded-[2rem] p-8 shadow-xl border border-slate-100 relative overflow-hidden h-fit">
              {showSuccess && (
-               <div className="absolute inset-0 bg-white/90 backdrop-blur-sm z-20 flex flex-col items-center justify-center text-center p-6 animate-in fade-in duration-300">
-                 <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
-                   <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+               <div className="absolute inset-0 bg-white/95 backdrop-blur-sm z-20 flex flex-col items-center justify-center text-center p-6 animate-in fade-in duration-300">
+                 <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-6 shadow-inner">
+                   <CheckCircle2 className="w-10 h-10 text-emerald-600" />
                  </div>
-                 <h3 className="text-2xl font-bold text-slate-800 mb-2">Terima Kasih!</h3>
-                 <p className="text-slate-600">Donasi Anda akan segera diproses untuk penghijauan.</p>
+                 <h3 className="text-2xl font-bold text-slate-800 mb-2">Terima Kasih, Pahlawan!</h3>
+                 <p className="text-slate-600 max-w-xs mx-auto">Donasi Anda telah tercatat. Nama Anda akan segera muncul di feed donasi.</p>
+                 <button 
+                  onClick={() => setShowSuccess(false)}
+                  className="mt-6 text-emerald-600 font-bold text-sm hover:underline"
+                 >
+                   Kembali
+                 </button>
                </div>
              )}
 
-             <div className="flex items-center gap-3 mb-6">
-               <div className="bg-emerald-100 p-3 rounded-full text-emerald-600">
+             <div className="flex items-center gap-3 mb-8">
+               <div className="bg-emerald-100 p-3 rounded-2xl text-emerald-600 shadow-sm">
                  <CreditCard className="w-6 h-6"/>
                </div>
-               <h3 className="text-xl font-bold text-slate-800">Formulir Donasi</h3>
+               <div>
+                  <h3 className="text-xl font-bold text-slate-800">Mulai Berdonasi</h3>
+                  <p className="text-xs text-slate-400">Pilih nominal atau masukkan jumlah custom</p>
+               </div>
              </div>
 
              <form onSubmit={handleDonate} className="space-y-6">
                <div>
-                 <label className="block text-sm font-medium text-slate-700 mb-3">Pilih Nominal Donasi</label>
-                 <div className="grid grid-cols-3 gap-3">
+                 <label className="block text-sm font-bold text-slate-700 mb-3">Pilih Bibit Pohon</label>
+                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                    {[50000, 100000, 250000].map((val) => (
                      <button
                        type="button"
                        key={val}
                        onClick={() => setAmount(val)}
-                       className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all ${
+                       className={`py-4 px-4 rounded-xl text-sm font-bold border-2 transition-all relative overflow-hidden ${
                          amount === val 
-                           ? 'bg-emerald-600 text-white border-emerald-600 shadow-md transform scale-105' 
-                           : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-500'
+                           ? 'bg-emerald-50 text-emerald-700 border-emerald-500 shadow-sm' 
+                           : 'bg-white text-slate-500 border-slate-100 hover:border-emerald-200 hover:bg-slate-50'
                        }`}
                      >
-                       Rp {val.toLocaleString('id-ID')}
+                       <span className="relative z-10 block text-xs font-normal opacity-70 mb-1">
+                         {val === 50000 ? '1 Bibit' : val === 100000 ? '2 Bibit' : '5 Bibit'}
+                       </span>
+                       <span className="relative z-10">Rp {val.toLocaleString('id-ID')}</span>
                      </button>
                    ))}
                  </div>
                </div>
 
-               <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Nama Donatur</label>
-                  <input 
-                    type="text" 
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all"
-                    placeholder="Masukkan nama anda"
-                  />
+               <div className="grid md:grid-cols-2 gap-4">
+                 <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">Nama Donatur</label>
+                    <input 
+                      type="text" 
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-emerald-500 focus:ring-0 outline-none transition-all bg-slate-50 focus:bg-white"
+                      placeholder="Nama Anda / Organisasi"
+                    />
+                 </div>
+                 <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">Email (Opsional)</label>
+                    <input 
+                      type="email" 
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-emerald-500 focus:ring-0 outline-none transition-all bg-slate-50 focus:bg-white"
+                      placeholder="email@contoh.com"
+                    />
+                 </div>
                </div>
 
                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Pesan Dukungan (Opsional)</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Pesan Dukungan</label>
                   <textarea 
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all h-24 resize-none"
-                    placeholder="Tulis pesan semangat..."
+                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-emerald-500 focus:ring-0 outline-none transition-all bg-slate-50 focus:bg-white h-28 resize-none"
+                    placeholder="Tulis pesan semangat untuk para penjaga hutan..."
                   ></textarea>
                </div>
 
-               <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-500/30 transition-all transform hover:-translate-y-1">
-                 Donasi Sekarang - Rp {amount.toLocaleString('id-ID')}
+               <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-xl shadow-emerald-500/20 transition-all transform hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-2">
+                 <span>Tanam {Math.floor(amount/50000)} Pohon Sekarang</span>
                </button>
                
-               <p className="text-xs text-center text-slate-400 flex items-center justify-center gap-1">
-                 <CheckCircle2 className="w-3 h-3"/> Pembayaran aman & transparan
+               <p className="text-[10px] text-center text-slate-400 flex items-center justify-center gap-1">
+                 <CheckCircle2 className="w-3 h-3"/> Pembayaran Anda diamankan dengan enkripsi SSL 256-bit
                </p>
              </form>
           </div>
 
-          {/* Recent Donations Feed */}
-          <div>
-            <div className="flex justify-between items-center mb-6">
-               <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                 <Users className="w-5 h-5 text-emerald-600"/> Donatur Terbaru
-               </h3>
-               <span className="text-sm text-emerald-600 font-medium cursor-pointer hover:underline">Lihat Semua</span>
+          {/* Right Column: Leaderboard & Recent Feed */}
+          <div className="flex flex-col h-full">
+            {/* Toggle Tabs */}
+            <div className="bg-white p-2 rounded-2xl shadow-sm border border-slate-100 mb-6 flex gap-1">
+               <button 
+                onClick={() => setViewMode('leaderboard')}
+                className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+                  viewMode === 'leaderboard' 
+                    ? 'bg-emerald-100 text-emerald-700 shadow-sm' 
+                    : 'text-slate-500 hover:bg-slate-50'
+                }`}
+               >
+                 <Trophy className="w-4 h-4" /> Top Pahlawan
+               </button>
+               <button 
+                onClick={() => setViewMode('recent')}
+                className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+                  viewMode === 'recent' 
+                    ? 'bg-emerald-100 text-emerald-700 shadow-sm' 
+                    : 'text-slate-500 hover:bg-slate-50'
+                }`}
+               >
+                 <Users className="w-4 h-4" /> Donasi Terbaru
+               </button>
             </div>
 
-            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-              {donations.map((d, i) => (
-                <div key={d.id} className={`bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-start gap-4 transition-all hover:shadow-md ${i === 0 ? 'animate-fade-in' : ''}`}>
-                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm">
-                     {d.name.charAt(0)}
-                   </div>
-                   <div className="flex-1">
-                      <div className="flex justify-between items-start">
-                        <h4 className="font-bold text-slate-800">{d.name}</h4>
-                        <span className="text-xs text-slate-400">Baru saja</span>
+            {/* List Container */}
+            <div className="flex-1 bg-white rounded-[2rem] p-6 shadow-xl border border-slate-100 relative overflow-hidden">
+                <div className="absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-white to-transparent z-10"></div>
+                
+                <div className="space-y-4 h-[600px] overflow-y-auto pr-2 custom-scrollbar pb-8 pt-2">
+                  
+                  {viewMode === 'leaderboard' ? (
+                    // Leaderboard View
+                    MOCK_LEADERBOARD.map((entry, i) => (
+                      <div 
+                        key={entry.id} 
+                        className={`p-4 rounded-2xl border flex items-center gap-4 transition-all hover:scale-[1.02] ${getCardStyle(i)}`}
+                      >
+                         <div className="w-10 h-10 flex items-center justify-center shrink-0">
+                           {getRankIcon(i)}
+                         </div>
+                         
+                         <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-bold text-slate-800 truncate">{entry.name}</h4>
+                              {entry.type === 'corporate' && (
+                                <span className="bg-blue-100 text-blue-600 p-1 rounded-md" title="Korporasi">
+                                  <Building2 className="w-3 h-3"/>
+                                </span>
+                              )}
+                              {entry.type === 'individual' && (
+                                <span className="bg-emerald-100 text-emerald-600 p-1 rounded-md" title="Individu">
+                                  <User className="w-3 h-3"/>
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                                {Math.floor(entry.amount / 50000)} Pohon
+                              </span>
+                            </div>
+                         </div>
+                         
+                         <div className="text-right">
+                           <p className="font-bold text-emerald-600 text-sm">Rp {(entry.amount / 1000000).toFixed(1)}jt</p>
+                         </div>
                       </div>
-                      <p className="text-emerald-600 font-semibold text-sm">Mendonasikan Rp {d.amount.toLocaleString('id-ID')}</p>
-                      {d.message && <p className="text-slate-500 text-sm mt-1 italic">&ldquo;{d.message}&rdquo;</p>}
-                   </div>
+                    ))
+                  ) : (
+                    // Recent Donations View
+                    donations.map((d, i) => (
+                      <div key={d.id} className={`bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-start gap-4 transition-all hover:shadow-md ${i === 0 ? 'animate-fade-in bg-emerald-50/50 border-emerald-100' : ''}`}>
+                         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm">
+                           {d.name.charAt(0)}
+                         </div>
+                         <div className="flex-1">
+                            <div className="flex justify-between items-start mb-1">
+                              <h4 className="font-bold text-slate-800">{d.name}</h4>
+                              <span className="text-[10px] text-slate-400">Baru saja</span>
+                            </div>
+                            <p className="text-emerald-600 font-semibold text-sm flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                              Rp {d.amount.toLocaleString('id-ID')}
+                            </p>
+                            {d.message && <p className="text-slate-500 text-xs mt-2 italic bg-slate-50 p-2 rounded-lg">&ldquo;{d.message}&rdquo;</p>}
+                         </div>
+                      </div>
+                    ))
+                  )}
+                  
+                  {viewMode === 'recent' && donations.length === 0 && (
+                    <div className="text-center text-slate-400 py-10">
+                      <p>Belum ada donasi baru saat ini.</p>
+                    </div>
+                  )}
+
+                  <div className="text-center pt-4">
+                    <button className="text-xs font-bold text-slate-400 hover:text-emerald-600 transition-colors uppercase tracking-wider">
+                      {viewMode === 'leaderboard' ? 'Lihat Semua Peringkat' : 'Lihat Semua Riwayat'}
+                    </button>
+                  </div>
                 </div>
-              ))}
+                
+                <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
             </div>
           </div>
         </div>
