@@ -38,6 +38,19 @@ export interface SuccessStory {
   readTime: string;
 }
 
+// Model Baru untuk Ensiklopedia
+export interface Species {
+  id: number;
+  name: string;
+  latinName: string;
+  type: 'flora' | 'fauna';
+  status: 'Critically Endangered' | 'Endangered' | 'Vulnerable';
+  description: string;
+  uniqueFact: string;
+  imageUrl: string;
+  habitat: string;
+}
+
 export const MOCK_STORIES: SuccessStory[] = [
   {
     id: 1,
@@ -77,7 +90,76 @@ export const MOCK_STORIES: SuccessStory[] = [
   }
 ];
 
-// ... Data MOCK_HEATMAP_DATA & MOCK_FOREST_DATA tetap sama ...
+// Data Mock Ensiklopedia
+export const MOCK_SPECIES: Species[] = [
+  {
+    id: 1,
+    name: "Harimau Sumatera",
+    latinName: "Panthera tigris sumatrae",
+    type: "fauna",
+    status: "Critically Endangered",
+    description: "Subspesies harimau terkecil yang masih bertahan hidup di dunia. Predator puncak ini memegang peranan kunci dalam menjaga keseimbangan ekosistem hutan hujan Sumatera.",
+    uniqueFact: "Memiliki selaput di sela-sela jarinya yang menjadikan mereka perenang ulung.",
+    imageUrl: "https://images.unsplash.com/photo-1500479694472-551d1fb6258d?q=80&w=800&auto=format&fit=crop",
+    habitat: "Hutan hujan dataran rendah hingga pegunungan"
+  },
+  {
+    id: 2,
+    name: "Pohon Andalas",
+    latinName: "Morus macroura",
+    type: "flora",
+    status: "Vulnerable",
+    description: "Flora identitas provinsi Sumatera Barat. Kayunya sangat kuat dan tahan rayap, sering digunakan untuk tiang rumah Gadang tradisional.",
+    uniqueFact: "Sering disebut sebagai 'Jati-nya Sumatera' karena kekuatan kayunya.",
+    imageUrl: "https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?q=80&w=800&auto=format&fit=crop", // Placeholder tree image
+    habitat: "Hutan sekunder dan dataran tinggi"
+  },
+  {
+    id: 3,
+    name: "Gajah Sumatera",
+    latinName: "Elephas maximus sumatranus",
+    type: "fauna",
+    status: "Critically Endangered",
+    description: "Gajah Asia subspesies Sumatera. Mereka adalah 'penyebar benih' alami yang sangat vital bagi regenerasi hutan.",
+    uniqueFact: "Dapat memakan hingga 150 kg tumbuhan per hari dan menjelajah hingga 20 km.",
+    imageUrl: "https://images.unsplash.com/photo-1557050543-4d5f4e07ef46?q=80&w=800&auto=format&fit=crop",
+    habitat: "Hutan dataran rendah"
+  },
+  {
+    id: 4,
+    name: "Meranti Merah",
+    latinName: "Shorea leprosula",
+    type: "flora",
+    status: "Endangered",
+    description: "Salah satu pohon penghasil kayu utama di hutan dipterocarpa. Pertumbuhannya cepat namun populasinya terancam akibat penebangan liar.",
+    uniqueFact: "Memiliki resin (damar) yang bernilai ekonomi tinggi.",
+    imageUrl: "https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?q=80&w=800&auto=format&fit=crop",
+    habitat: "Hutan Dipterocarpa pamah"
+  },
+  {
+    id: 5,
+    name: "Orangutan Sumatera",
+    latinName: "Pongo abelii",
+    type: "fauna",
+    status: "Critically Endangered",
+    description: "Kera besar yang hampir seluruh hidupnya dihabiskan di atas pohon (arboreal). Memiliki peran penting dalam menyebarkan biji buah-buahan hutan.",
+    uniqueFact: "Memiliki rentang reproduksi yang sangat lambat, melahirkan hanya setiap 8-9 tahun sekali.",
+    imageUrl: "https://images.unsplash.com/photo-1628174780075-81230193235b?q=80&w=800&auto=format&fit=crop",
+    habitat: "Hutan rawa gambut dan hutan hujan tropis"
+  },
+  {
+    id: 6,
+    name: "Rafflesia Arnoldii",
+    latinName: "Rafflesia arnoldii",
+    type: "flora",
+    status: "Endangered",
+    description: "Bunga terbesar di dunia yang tumbuh parasit pada tanaman rambat Tetrastigma. Ikon keanekaragaman hayati hutan hujan Bengkulu dan Sumatera.",
+    uniqueFact: "Tidak memiliki daun, batang, atau akar yang terlihat, dan mengeluarkan bau busuk untuk menarik lalat penyerbuk.",
+    imageUrl: "https://images.unsplash.com/photo-1695738096279-d56711977e20?q=80&w=800&auto=format&fit=crop",
+    habitat: "Lantai hutan hujan primer"
+  }
+];
+
 export const MOCK_HEATMAP_DATA: [number, number, number][] = [
   [5.2, 95.8, 0.8], [5.1, 95.9, 0.5], [4.8, 96.2, 0.7],
   [3.8, 98.1, 0.9], [3.6, 98.3, 0.6], [3.4, 97.6, 0.8],

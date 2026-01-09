@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Trees, Menu, X } from 'lucide-react';
+import { Trees, Menu, X, Book } from 'lucide-react';
 
 interface NavbarProps {
   activeTab: string;
@@ -15,6 +15,7 @@ export default function Navbar({ activeTab, setActiveTab, isScrolled }: NavbarPr
   const menuItems = [
     { id: 'home', label: 'Beranda' },
     { id: 'map', label: 'Monitoring Peta' },
+    { id: 'encyclopedia', label: 'Ensiklopedia' }, // Menu Baru
     { id: 'stories', label: 'Cerita Sukses' },
     { id: 'donate', label: 'Donasi Pohon' }
   ];
@@ -37,12 +38,13 @@ export default function Navbar({ activeTab, setActiveTab, isScrolled }: NavbarPr
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`capitalize font-medium transition-colors ${
+              className={`capitalize font-medium transition-colors flex items-center gap-1 ${
                 activeTab === item.id 
                   ? 'text-emerald-500' 
                   : isScrolled ? 'text-slate-600 hover:text-emerald-500' : 'text-slate-200 hover:text-white'
               }`}
             >
+              {item.id === 'encyclopedia' && <Book size={16} className={activeTab === 'encyclopedia' ? 'text-emerald-500' : ''}/>}
               {item.label}
             </button>
           ))}
@@ -69,8 +71,9 @@ export default function Navbar({ activeTab, setActiveTab, isScrolled }: NavbarPr
             <button
               key={item.id}
               onClick={() => { setActiveTab(item.id); setIsOpen(false); }}
-              className={`text-left capitalize font-medium py-2 border-b border-slate-100 ${activeTab === item.id ? 'text-emerald-600' : 'text-slate-600'}`}
+              className={`text-left capitalize font-medium py-2 border-b border-slate-100 flex items-center gap-2 ${activeTab === item.id ? 'text-emerald-600' : 'text-slate-600'}`}
             >
+              {item.id === 'encyclopedia' && <Book size={18}/>}
               {item.label}
             </button>
           ))}

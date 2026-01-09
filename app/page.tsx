@@ -8,6 +8,7 @@ import EducationSection from './components/EducationSection';
 import InteractiveMap from './components/InteractiveMap';
 import DonationSection from './components/DonationSection';
 import SuccessStoriesSection from './components/SuccessStoriesSection';
+import EncyclopediaSection from './components/EncyclopediaSection'; // Import baru
 import Footer from './components/Footer';
 
 export default function App() {
@@ -31,15 +32,26 @@ export default function App() {
           <div className="animate-fade-in">
             <Hero setActiveTab={setActiveTab} />
             <EducationSection />
-            <SuccessStoriesSection />
+            <EncyclopediaSection /> {/* Ditambahkan di Home flow juga untuk SEO */}
             <InteractiveMap />
-            <DonationSection />
+            <SuccessStoriesSection />
+            <div id="donation-section">
+              <DonationSection />
+            </div>
           </div>
         )}
         
         {activeTab === 'map' && (
           <div className="animate-fade-in">
             <InteractiveMap />
+          </div>
+        )}
+
+        {activeTab === 'encyclopedia' && ( // Tab Baru
+          <div className="animate-fade-in pt-0">
+             {/* Tambahkan padding top manual atau spacer karena navbar fixed */}
+             <div className="h-20 bg-slate-900"></div> 
+            <EncyclopediaSection />
           </div>
         )}
 
