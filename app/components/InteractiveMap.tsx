@@ -1,15 +1,14 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Layers, Maximize2, Activity, Map as MapIcon, Flame, MapPin } from 'lucide-react';
-import { ForestDataPoint, MOCK_FOREST_DATA, MOCK_HEATMAP_DATA } from '../lib/definitions';
-
-// --- Type Definitions untuk Leaflet (Fix: no-explicit-any) ---
+import { Layers, Maximize2, Activity, Map as MapIcon, Flame, MapPin, Play, Pause, RotateCcw, Calendar } from 'lucide-react';
+import { ForestDataPoint, MOCK_FOREST_DATA, MOCK_TIMELINE_DATA } from '../lib/definitions';
 
 interface LeafletLayer {
   addTo: (map: LeafletMap) => LeafletLayer;
   remove: () => void;
   on?: (event: string, fn: () => void) => void;
+  setLatLngs?: (data: [number, number, number][]) => void;
 }
 
 interface LeafletMap {
@@ -30,14 +29,13 @@ interface LeafletStatic {
   heatLayer?: (data: [number, number, number][], options: Record<string, unknown>) => LeafletLayer;
 }
 
-// Memperluas interface Window agar properti L dikenali
 declare global {
   interface Window {
     L?: LeafletStatic;
   }
 }
 
-// -------------------------------------------------------------
+const YEARS = [2015, 2018, 2021, 2024, 2025];
 
 export default function InteractiveMap() {
   const [selectedPoint, setSelectedPoint] = useState<ForestDataPoint | null>(null);
@@ -45,7 +43,11 @@ export default function InteractiveMap() {
   const [mapType, setMapType] = useState<'street' | 'satellite'>('street');
   const [showHeatmap, setShowHeatmap] = useState(true);
   
-  // Fix: Menggunakan tipe spesifik daripada 'any'
+  // Timeline States
+  const [currentYear, setCurrentYear] = useState(2025);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const playIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<LeafletMap | null>(null);
   const layerRef = useRef<LeafletLayer | null>(null);
@@ -63,8 +65,6 @@ export default function InteractiveMap() {
     }
 
     const loadScripts = async () => {
-      // Load Leaflet
-      // Fix: Mengakses window.L dengan aman tanpa casting ke 'any'
       if (!window.L) {
         await new Promise((resolve) => {
           const script = document.createElement('script');
@@ -75,7 +75,6 @@ export default function InteractiveMap() {
         });
       }
       
-      // Load Heatmap Plugin
       if (!window.L?.heatLayer) {
         await new Promise((resolve) => {
           const script = document.createElement('script');
@@ -85,36 +84,29 @@ export default function InteractiveMap() {
           document.body.appendChild(script);
         });
       }
-      
       setIsMapReady(true);
     };
 
     loadScripts();
   }, []);
 
-  // Effect to handle Map Initialization
+  // Map Initialization
   useEffect(() => {
     if (isMapReady && mapContainerRef.current && !mapInstanceRef.current) {
       const L = window.L;
-      
-      // Safety check jika L belum terload sempurna
       if (!L) return;
       
       const map = L.map(mapContainerRef.current).setView([2.5, 99.5], 6);
       mapInstanceRef.current = map;
 
-      // Base layer
       const streetLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; CARTO'
       });
-      
       streetLayer.addTo(map);
       layerRef.current = streetLayer;
 
-      // Add Markers
       MOCK_FOREST_DATA.forEach((point) => {
         const colorClass = point.status === 'critical' ? 'bg-red-500' : point.status === 'healthy' ? 'bg-emerald-500' : 'bg-yellow-500';
-        
         const customIcon = L.divIcon({
           className: 'custom-div-icon',
           html: `
@@ -123,13 +115,11 @@ export default function InteractiveMap() {
               <span class="relative inline-flex rounded-full h-3 w-3 top-1.5 left-1.5 ${colorClass} shadow-lg ring-2 ring-white/20"></span>
             </div>
           `,
-          iconSize: [24, 24], // Leaflet mengharapkan array atau object Point, kita pakai array untuk simplifikasi tipe
+          iconSize: [24, 24],
           iconAnchor: [12, 12]
-        } as Record<string, unknown>); // Casting options ke Record agar sesuai interface
+        } as Record<string, unknown>);
 
         const marker = L.marker([point.geoLat, point.geoLng], { icon: customIcon }).addTo(map);
-        
-        // Cek jika method 'on' tersedia (karena interface kita membuatnya opsional)
         if (marker.on) {
           marker.on('click', () => {
             setSelectedPoint(point);
@@ -138,9 +128,8 @@ export default function InteractiveMap() {
         }
       });
 
-      // Add Heatmap Layer
       if (L.heatLayer) {
-        const heat = L.heatLayer(MOCK_HEATMAP_DATA, {
+        const heat = L.heatLayer(MOCK_TIMELINE_DATA[currentYear], {
           radius: 25,
           blur: 15,
           maxZoom: 10,
@@ -151,42 +140,59 @@ export default function InteractiveMap() {
     }
   }, [isMapReady]);
 
-  // Handle Layer Toggle (Street vs Satellite)
+  // Handle Timeline Updates
   useEffect(() => {
-    if (mapInstanceRef.current) {
-      const L = window.L;
-      const map = mapInstanceRef.current;
-
-      if (!L) return;
-
-      if (layerRef.current) {
-        map.removeLayer(layerRef.current);
+    if (mapInstanceRef.current && heatLayerRef.current && window.L?.heatLayer) {
+      const heatData = MOCK_TIMELINE_DATA[currentYear] || [];
+      // Re-create or update heat layer
+      if (heatLayerRef.current.setLatLngs) {
+        heatLayerRef.current.setLatLngs(heatData);
+      } else {
+        mapInstanceRef.current.removeLayer(heatLayerRef.current);
+        const newHeat = window.L.heatLayer(heatData, {
+            radius: 25,
+            blur: 15,
+            maxZoom: 10,
+            gradient: { 0.4: 'blue', 0.6: 'lime', 0.8: 'yellow', 1: 'red' }
+        }).addTo(mapInstanceRef.current);
+        heatLayerRef.current = newHeat;
       }
+    }
+  }, [currentYear]);
+
+  // Playback Logic
+  useEffect(() => {
+    if (isPlaying) {
+      playIntervalRef.current = setInterval(() => {
+        setCurrentYear((prev) => {
+          const currentIndex = YEARS.indexOf(prev);
+          if (currentIndex === YEARS.length - 1) return YEARS[0];
+          return YEARS[currentIndex + 1];
+        });
+      }, 1500);
+    } else {
+      if (playIntervalRef.current) clearInterval(playIntervalRef.current);
+    }
+    return () => { if (playIntervalRef.current) clearInterval(playIntervalRef.current); };
+  }, [isPlaying]);
+
+  // Handle Layer Toggle
+  useEffect(() => {
+    if (mapInstanceRef.current && window.L) {
+      const map = mapInstanceRef.current;
+      if (layerRef.current) map.removeLayer(layerRef.current);
 
       const newUrl = mapType === 'satellite' 
         ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
         : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
       
-      const newLayer = L.tileLayer(newUrl, {
+      const newLayer = window.L.tileLayer(newUrl, {
         attribution: mapType === 'satellite' ? 'Esri &copy; DigitalGlobe' : '&copy; CARTO'
       });
-
       newLayer.addTo(map);
       layerRef.current = newLayer;
     }
   }, [mapType]);
-
-  // Handle Heatmap Toggle
-  useEffect(() => {
-    if (mapInstanceRef.current && heatLayerRef.current) {
-      const map = mapInstanceRef.current;
-      if (showHeatmap) {
-        map.addLayer(heatLayerRef.current);
-      } else {
-        map.removeLayer(heatLayerRef.current);
-      }
-    }
-  }, [showHeatmap]);
 
   return (
     <div className="min-h-screen pt-24 bg-slate-50 pb-20">
@@ -194,95 +200,163 @@ export default function InteractiveMap() {
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-slate-800 mb-4">Monitoring Hutan <span className="text-emerald-600">Real-time</span></h2>
           <p className="text-slate-600 max-w-2xl mx-auto">
-            Gunakan kontrol peta untuk melihat visualisasi titik panas (Hotspots) dan pantauan satelit untuk deteksi perambahan ilegal.
+            Gunakan kontrol timeline untuk membandingkan laju deforestasi dari tahun ke tahun dan deteksi dini area kritis.
           </p>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Map Interface */}
-          <div className="lg:col-span-2 bg-slate-900 rounded-3xl overflow-hidden shadow-2xl relative h-[650px] border border-slate-800 group z-0">
-            
-            {/* Custom Layer Controls UI */}
-            <div className="absolute top-4 left-4 z-[500] flex flex-col gap-3">
-              <div className="bg-slate-900/80 backdrop-blur-md p-1.5 rounded-2xl border border-slate-700 shadow-2xl">
-                <div className="flex flex-col gap-1">
+          <div className="lg:col-span-2 space-y-4">
+            {/* Map Interface */}
+            <div className="bg-slate-900 rounded-3xl overflow-hidden shadow-2xl relative h-[600px] border border-slate-800 group z-0">
+              
+              {/* Controls UI */}
+              <div className="absolute top-4 left-4 z-[500] flex flex-col gap-3">
+                <div className="bg-slate-900/80 backdrop-blur-md p-1.5 rounded-2xl border border-slate-700 shadow-2xl">
+                  <div className="flex flex-col gap-1">
+                    <button 
+                      onClick={() => setMapType('street')}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all ${mapType === 'street' ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                    >
+                      <MapIcon size={16}/> Street
+                    </button>
+                    <button 
+                      onClick={() => setMapType('satellite')}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all ${mapType === 'satellite' ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                    >
+                      <Layers size={16}/> Satellite
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-slate-900/80 backdrop-blur-md p-1.5 rounded-2xl border border-slate-700 shadow-2xl">
                   <button 
-                    onClick={() => setMapType('street')}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all ${mapType === 'street' ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                    onClick={() => setShowHeatmap(!showHeatmap)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all w-full ${showHeatmap ? 'bg-orange-500 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
                   >
-                    <MapIcon size={16}/> Street
-                  </button>
-                  <button 
-                    onClick={() => setMapType('satellite')}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all ${mapType === 'satellite' ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
-                  >
-                    <Layers size={16}/> Satellite
+                    <Flame size={16}/> {showHeatmap ? 'Sembunyikan Hotspots' : 'Tampilkan Hotspots'}
                   </button>
                 </div>
               </div>
 
-              <div className="bg-slate-900/80 backdrop-blur-md p-1.5 rounded-2xl border border-slate-700 shadow-2xl">
-                <button 
-                  onClick={() => setShowHeatmap(!showHeatmap)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all w-full ${showHeatmap ? 'bg-orange-500 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
-                >
-                  <Flame size={16}/> {showHeatmap ? 'Sembunyikan Hotspots' : 'Tampilkan Hotspots'}
-                </button>
+              <div id="map" ref={mapContainerRef} className="w-full h-full bg-[#1a1a1a]">
+                {!isMapReady && (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 gap-3">
+                    <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-sm">Inisialisasi Sistem Geospasial...</p>
+                  </div>
+                )}
               </div>
-            </div>
 
-            <div className="absolute top-4 right-4 z-[500]">
-              <button className="bg-slate-800 p-2 rounded-lg text-white hover:bg-slate-700 border border-slate-700 shadow-lg"><Maximize2 size={20}/></button>
-            </div>
+              {/* Year Badge Overlay */}
+              <div className="absolute top-4 right-4 z-[500] bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold shadow-xl border border-emerald-400/30 flex items-center gap-2">
+                <Calendar size={18} />
+                Tahun {currentYear}
+              </div>
 
-            <div id="map" ref={mapContainerRef} className="w-full h-full bg-[#1a1a1a]">
-              {!isMapReady && (
-                <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 gap-3">
-                  <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-                  <p className="text-sm">Inisialisasi Sistem Geospasial...</p>
-                </div>
-              )}
-            </div>
-
-            {/* Legend */}
-            <div className="absolute bottom-6 left-6 z-[500] bg-slate-900/90 backdrop-blur px-4 py-4 rounded-2xl border border-slate-700 text-xs text-white shadow-xl min-w-[180px]">
-               <p className="font-bold mb-3 text-slate-400 uppercase tracking-widest text-[10px]">Indikator Status</p>
-               <div className="space-y-2.5">
-                  <div className="flex items-center gap-3">
-                    <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.8)]"></span> 
-                    <span>Deforestasi Kritis</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="w-3 h-3 rounded-full bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.5)]"></span> 
-                    <span>Area Pemulihan</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></span> 
-                    <span>Hutan Primer</span>
-                  </div>
-                  {showHeatmap && (
-                    <div className="pt-2 mt-2 border-t border-slate-700">
-                      <p className="text-[10px] text-orange-400 font-bold mb-2">HEATMAP KERAWANAN</p>
-                      <div className="h-2 w-full bg-gradient-to-r from-blue-500 via-lime-500 to-red-500 rounded-full"></div>
-                      <div className="flex justify-between mt-1 text-[9px] text-slate-500">
-                        <span>Rendah</span>
-                        <span>Tinggi</span>
-                      </div>
+              {/* Legend */}
+              <div className="absolute bottom-6 left-6 z-[500] bg-slate-900/90 backdrop-blur px-4 py-4 rounded-2xl border border-slate-700 text-xs text-white shadow-xl min-w-[180px]">
+                 <p className="font-bold mb-3 text-slate-400 uppercase tracking-widest text-[10px]">Indikator Status</p>
+                 <div className="space-y-2.5">
+                    <div className="flex items-center gap-3">
+                      <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse"></span> 
+                      <span>Deforestasi Kritis</span>
                     </div>
-                  )}
-               </div>
+                    <div className="flex items-center gap-3">
+                      <span className="w-3 h-3 rounded-full bg-emerald-500"></span> 
+                      <span>Hutan Primer</span>
+                    </div>
+                    {showHeatmap && (
+                      <div className="pt-2 mt-2 border-t border-slate-700">
+                        <p className="text-[10px] text-orange-400 font-bold mb-2 uppercase">Laju Kehilangan Tutupan</p>
+                        <div className="h-2 w-full bg-gradient-to-r from-blue-500 via-lime-500 to-red-500 rounded-full"></div>
+                        <div className="flex justify-between mt-1 text-[9px] text-slate-500">
+                          <span>Minimum</span>
+                          <span>Maksimum</span>
+                        </div>
+                      </div>
+                    )}
+                 </div>
+              </div>
+            </div>
+
+            {/* Timeline Slider Control */}
+            <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100">
+              <div className="flex flex-col md:flex-row items-center gap-6">
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => setIsPlaying(!isPlaying)}
+                    className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isPlaying ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200'}`}
+                  >
+                    {isPlaying ? <Pause fill="currentColor" /> : <Play fill="currentColor" className="ml-1" />}
+                  </button>
+                  <button 
+                    onClick={() => {setCurrentYear(YEARS[0]); setIsPlaying(false);}}
+                    className="w-12 h-12 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-slate-200"
+                  >
+                    <RotateCcw size={20} />
+                  </button>
+                </div>
+
+                <div className="flex-1 w-full space-y-4">
+                  <div className="relative h-2 bg-slate-100 rounded-full">
+                    <input 
+                      type="range"
+                      min={YEARS[0]}
+                      max={YEARS[YEARS.length - 1]}
+                      step={1}
+                      value={currentYear}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        // Temukan tahun terdekat dari YEARS array
+                        const closest = YEARS.reduce((prev, curr) => Math.abs(curr - val) < Math.abs(prev - val) ? curr : prev);
+                        setCurrentYear(closest);
+                        setIsPlaying(false);
+                      }}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    />
+                    <div 
+                      className="absolute h-full bg-emerald-500 rounded-full transition-all duration-300"
+                      style={{ width: `${((currentYear - YEARS[0]) / (YEARS[YEARS.length - 1] - YEARS[0])) * 100}%` }}
+                    ></div>
+                    <div 
+                      className="absolute w-6 h-6 bg-white border-4 border-emerald-500 rounded-full top-1/2 -translate-y-1/2 shadow-lg transition-all duration-300"
+                      style={{ left: `calc(${((currentYear - YEARS[0]) / (YEARS[YEARS.length - 1] - YEARS[0])) * 100}% - 12px)` }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between px-1">
+                    {YEARS.map(year => (
+                      <button 
+                        key={year}
+                        onClick={() => {setCurrentYear(year); setIsPlaying(false);}}
+                        className={`text-xs font-bold transition-all ${currentYear === year ? 'text-emerald-600 scale-110' : 'text-slate-400 hover:text-slate-600'}`}
+                      >
+                        {year}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Sidebar Detail */}
           <div className="space-y-6">
-            <div className="bg-white rounded-2xl p-6 shadow-lg border border-slate-100 transition-all hover:shadow-xl">
+            <div className="bg-white rounded-2xl p-6 shadow-lg border border-slate-100">
               <h3 className="font-bold text-lg text-slate-800 mb-4 flex items-center gap-2">
-                <Activity className="w-5 h-5 text-emerald-600"/> Analisis Geospasial
+                <Activity className="w-5 h-5 text-emerald-600"/> Analisis Timeline
               </h3>
               
+              <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100 mb-4">
+                <p className="text-xs text-emerald-600 font-bold mb-1 uppercase">Wawasan Historis ({currentYear})</p>
+                <p className="text-sm text-slate-700 leading-relaxed">
+                  {currentYear < 2020 
+                    ? "Pada periode ini, tutupan hutan primer masih relatif stabil dengan gangguan minimal di wilayah pesisir." 
+                    : "Terjadi peningkatan intensitas titik panas di wilayah tengah akibat pembukaan lahan perkebunan skala besar."}
+                </p>
+              </div>
+
               {selectedPoint ? (
-                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500 pt-4 border-t border-slate-100">
                   <div className="flex justify-between items-start">
                     <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
                       selectedPoint.status === 'critical' ? 'bg-red-100 text-red-600' : 
@@ -301,29 +375,19 @@ export default function InteractiveMap() {
                         <p className="font-bold text-slate-800 text-lg">{selectedPoint.intensity}/10</p>
                      </div>
                      <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                        <p className="text-xs text-slate-500 mb-1">Luas Pantauan</p>
-                        <p className="font-bold text-slate-800 text-lg">1.2k Ha</p>
+                        <p className="text-xs text-slate-500 mb-1">Status Area</p>
+                        <p className="font-bold text-slate-800 text-sm">Terpantau</p>
                      </div>
                   </div>
 
-                  <div className="p-4 bg-red-50 rounded-xl border border-red-100">
-                    <p className="text-xs text-red-600 font-bold mb-1">PERINGATAN DINI</p>
-                    {/* Fix: react/no-unescaped-entities - Mengganti kutip dua dengan &quot; */}
-                    <p className="text-sm text-red-700 leading-relaxed italic">
-                      &quot;Titik panas terdeteksi di radius 2km. Risiko kebakaran hutan meningkat akibat cuaca ekstrem.&quot;
-                    </p>
-                  </div>
-
                   <button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl font-bold transition-all shadow-lg shadow-emerald-500/20 transform hover:-translate-y-1">
-                    Kirim Bantuan Reboisasi
+                    Donasi Pemulihan Area
                   </button>
                 </div>
               ) : (
-                <div className="h-64 flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50 p-8 text-center">
-                  <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
-                    <MapIcon className="w-8 h-8 opacity-20"/>
-                  </div>
-                  <p className="text-sm font-medium">Klik pada marker di peta untuk menganalisis data tutupan lahan secara mendalam.</p>
+                <div className="h-48 flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50 p-6 text-center">
+                  <MapIcon className="w-8 h-8 opacity-20 mb-2"/>
+                  <p className="text-xs font-medium">Pilih titik di peta untuk melihat detail spesifik area.</p>
                 </div>
               )}
             </div>
@@ -333,12 +397,18 @@ export default function InteractiveMap() {
                  <Activity size={120} />
                </div>
                <h3 className="font-bold mb-3 relative z-10 flex items-center gap-2">
-                 <Flame className="text-orange-500 w-5 h-5" /> Data FIRMS NASA
+                 <Flame className="text-orange-500 w-5 h-5" /> Komparasi Data
                </h3>
-               <p className="text-sm text-slate-400 mb-4 relative z-10">Integrasi data real-time untuk memantau titik api dalam 24 jam terakhir.</p>
-               <div className="flex items-center gap-2 text-xs text-emerald-400 font-mono bg-emerald-400/10 p-2 rounded-lg border border-emerald-400/20">
-                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                 Connected to Sentinel-2 API
+               <div className="space-y-3 relative z-10">
+                  <div className="flex justify-between text-xs border-b border-white/10 pb-2">
+                    <span className="text-slate-400">Total Deforestasi 2015</span>
+                    <span className="font-mono">12.5k Ha</span>
+                  </div>
+                  <div className="flex justify-between text-xs border-b border-white/10 pb-2">
+                    <span className="text-slate-400">Total Deforestasi {currentYear}</span>
+                    <span className="font-mono text-orange-400">{(12.5 + (currentYear - 2015) * 1.5).toFixed(1)}k Ha</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 italic mt-2">*Estimasi berdasarkan analisis citra satelit Sentinel-2.</p>
                </div>
             </div>
           </div>
