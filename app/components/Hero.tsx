@@ -8,6 +8,21 @@ interface HeroProps {
 }
 
 export default function Hero({ setActiveTab }: HeroProps) {
+  
+  const scrollToDonation = () => {
+    setActiveTab('home');
+    // Beri sedikit jeda agar DOM render jika sebelumnya di tab lain
+    setTimeout(() => {
+        const element = document.getElementById('donation');
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth' });
+        } else {
+            // Fallback jika id tidak ketemu (misal structure berubah), set tab donate
+            setActiveTab('donate');
+        }
+    }, 100);
+  };
+
   return (
     <div className="relative min-h-screen flex items-center pt-20 overflow-hidden bg-slate-900">
       {/* Background Image with Overlay */}
@@ -16,18 +31,22 @@ export default function Hero({ setActiveTab }: HeroProps) {
           src="https://images.unsplash.com/photo-1511497584788-876760111969?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80" 
           alt="Sumatra Rainforest" 
           className="w-full h-full object-cover opacity-60"
+          loading="eager" // Hero image should load immediately
         />
         <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/80 to-transparent"></div>
       </div>
 
       <div className="container mx-auto px-6 relative z-10 grid md:grid-cols-2 gap-12 items-center">
         <div className="space-y-8 animate-fade-in-up">
-          <div className="inline-flex items-center gap-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 px-4 py-2 rounded-full text-sm font-semibold backdrop-blur-sm">
-            <Activity className="w-4 h-4" />
+          <div className="inline-flex items-center gap-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 px-4 py-2 rounded-full text-sm font-semibold backdrop-blur-sm shadow-sm">
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+            </span>
             <span>Status Siaga: Banjir Bandang Aceh</span>
           </div>
           
-          <h1 className="text-5xl md:text-7xl font-bold text-white leading-tight">
+          <h1 className="text-5xl md:text-7xl font-bold text-white leading-tight tracking-tight">
             Pulihkan Hutan, <br/>
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">
               Cegah Bencana.
@@ -40,8 +59,8 @@ export default function Hero({ setActiveTab }: HeroProps) {
 
           <div className="flex flex-col sm:flex-row gap-4">
             <button 
-              onClick={() => setActiveTab('donate')}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-4 rounded-full font-bold text-lg transition-all shadow-lg shadow-emerald-500/40 flex items-center justify-center gap-2"
+              onClick={scrollToDonation}
+              className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-4 rounded-full font-bold text-lg transition-all shadow-lg shadow-emerald-500/40 flex items-center justify-center gap-2 transform hover:-translate-y-1"
             >
               <Trees className="w-5 h-5" />
               Donasi Pohon
@@ -81,7 +100,7 @@ export default function Hero({ setActiveTab }: HeroProps) {
               <div className="space-y-4">
                  {[1,2,3].map(i => (
                    <div key={i} className="flex items-center gap-4 bg-slate-700/50 p-3 rounded-xl border border-slate-600">
-                      <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center shrink-0">
                         <AlertTriangle className="text-red-500 w-5 h-5" />
                       </div>
                       <div>

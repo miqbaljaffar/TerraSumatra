@@ -1,8 +1,16 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Layers, Maximize2, Activity, Map as MapIcon, Flame, MapPin, Play, Pause, RotateCcw, Calendar } from 'lucide-react';
+import { Layers, Activity, Map as MapIcon, Flame, MapPin, Play, Pause, RotateCcw, Calendar } from 'lucide-react';
 import { ForestDataPoint, MOCK_FOREST_DATA, MOCK_TIMELINE_DATA } from '../lib/definitions';
+
+// --- Type Definitions untuk Leaflet (Global augmentation) ---
+interface LeafletMap {
+  setView: (center: [number, number], zoom: number, options?: { animate: boolean }) => LeafletMap;
+  removeLayer: (layer: LeafletLayer) => void;
+  addLayer: (layer: LeafletLayer) => void;
+  remove: () => void; // Penting untuk cleanup
+}
 
 interface LeafletLayer {
   addTo: (map: LeafletMap) => LeafletLayer;
@@ -11,18 +19,12 @@ interface LeafletLayer {
   setLatLngs?: (data: [number, number, number][]) => void;
 }
 
-interface LeafletMap {
-  setView: (center: [number, number], zoom: number, options?: { animate: boolean }) => LeafletMap;
-  removeLayer: (layer: LeafletLayer) => void;
-  addLayer: (layer: LeafletLayer) => void;
-}
-
 interface LeafletIcon {
   options: Record<string, unknown>;
 }
 
 interface LeafletStatic {
-  map: (element: HTMLElement | null) => LeafletMap;
+  map: (element: HTMLElement | string) => LeafletMap;
   tileLayer: (url: string, options?: Record<string, unknown>) => LeafletLayer;
   divIcon: (options: Record<string, unknown>) => LeafletIcon;
   marker: (latlng: [number, number], options?: { icon: LeafletIcon }) => LeafletLayer;
@@ -46,121 +48,160 @@ export default function InteractiveMap() {
   // Timeline States
   const [currentYear, setCurrentYear] = useState(2025);
   const [isPlaying, setIsPlaying] = useState(false);
+  
+  // Refs untuk menyimpan instance agar tidak hilang saat re-render
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<LeafletMap | null>(null);
-  const layerRef = useRef<LeafletLayer | null>(null);
+  const tileLayerRef = useRef<LeafletLayer | null>(null);
   const heatLayerRef = useRef<LeafletLayer | null>(null);
 
-  // Initialize Leaflet & Heatmap Script
+  // 1. Script Loading (Best Practice: Load only once)
   useEffect(() => {
-    const existingCss = document.getElementById('leaflet-css');
-    if (!existingCss) {
-      const link = document.createElement('link');
-      link.id = 'leaflet-css';
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(link);
-    }
+    const loadLeaflet = async () => {
+      if (typeof window === 'undefined') return;
 
-    const loadScripts = async () => {
+      // Cek apakah CSS sudah ada
+      if (!document.getElementById('leaflet-css')) {
+        const link = document.createElement('link');
+        link.id = 'leaflet-css';
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(link);
+      }
+
+      // Cek apakah Script JS sudah ada
       if (!window.L) {
-        await new Promise((resolve) => {
+        await new Promise<void>((resolve) => {
           const script = document.createElement('script');
           script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
           script.async = true;
-          script.onload = resolve;
+          script.onload = () => resolve();
           document.body.appendChild(script);
         });
       }
       
-      if (!window.L?.heatLayer) {
-        await new Promise((resolve) => {
+      // Load Heatmap plugin
+      if (window.L && !window.L.heatLayer) {
+        await new Promise<void>((resolve) => {
           const script = document.createElement('script');
           script.src = 'https://leaflet.github.io/Leaflet.heat/dist/leaflet-heat.js';
           script.async = true;
-          script.onload = resolve;
+          script.onload = () => resolve();
           document.body.appendChild(script);
         });
       }
+      
       setIsMapReady(true);
     };
 
-    loadScripts();
+    loadLeaflet();
   }, []);
 
-  // Map Initialization
+  // 2. Map Initialization & Cleanup (Best Practice: Prevent Memory Leaks)
   useEffect(() => {
-    if (isMapReady && mapContainerRef.current && !mapInstanceRef.current) {
-      const L = window.L;
-      if (!L) return;
+    if (!isMapReady || !mapContainerRef.current || mapInstanceRef.current) return;
+
+    const L = window.L;
+    if (!L) return;
+
+    // Inisialisasi Map
+    const map = L.map(mapContainerRef.current).setView([2.5, 99.5], 6);
+    mapInstanceRef.current = map;
+
+    // Layer Dasar
+    const streetLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; CARTO'
+    });
+    streetLayer.addTo(map);
+    tileLayerRef.current = streetLayer;
+
+    // Marker Data Hutan
+    MOCK_FOREST_DATA.forEach((point) => {
+      const colorClass = point.status === 'critical' ? 'bg-red-500' : point.status === 'healthy' ? 'bg-emerald-500' : 'bg-yellow-500';
       
-      const map = L.map(mapContainerRef.current).setView([2.5, 99.5], 6);
-      mapInstanceRef.current = map;
+      const customIcon = L.divIcon({
+        className: 'custom-div-icon',
+        html: `
+          <div class="relative w-6 h-6 -ml-3 -mt-3 group cursor-pointer">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${colorClass}"></span>
+            <span class="relative inline-flex rounded-full h-3 w-3 top-1.5 left-1.5 ${colorClass} shadow-lg ring-2 ring-white/20 transition-transform group-hover:scale-125"></span>
+          </div>
+        `,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+      } as Record<string, unknown>);
 
-      const streetLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; CARTO'
-      });
-      streetLayer.addTo(map);
-      layerRef.current = streetLayer;
+      const marker = L.marker([point.geoLat, point.geoLng], { icon: customIcon }).addTo(map);
+      if (marker.on) {
+        marker.on('click', () => {
+          setSelectedPoint(point);
+          map.setView([point.geoLat, point.geoLng], 9, { animate: true });
+        });
+      }
+    });
 
-      MOCK_FOREST_DATA.forEach((point) => {
-        const colorClass = point.status === 'critical' ? 'bg-red-500' : point.status === 'healthy' ? 'bg-emerald-500' : 'bg-yellow-500';
-        const customIcon = L.divIcon({
-          className: 'custom-div-icon',
-          html: `
-            <div class="relative w-6 h-6 -ml-3 -mt-3">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${colorClass}"></span>
-              <span class="relative inline-flex rounded-full h-3 w-3 top-1.5 left-1.5 ${colorClass} shadow-lg ring-2 ring-white/20"></span>
-            </div>
-          `,
-          iconSize: [24, 24],
-          iconAnchor: [12, 12]
-        } as Record<string, unknown>);
+    // Heatmap Awal
+    if (L.heatLayer) {
+      const heat = L.heatLayer(MOCK_TIMELINE_DATA[currentYear], {
+        radius: 25,
+        blur: 15,
+        maxZoom: 10,
+        gradient: { 0.4: 'blue', 0.6: 'lime', 0.8: 'yellow', 1: 'red' }
+      }).addTo(map);
+      heatLayerRef.current = heat;
+    }
 
-        const marker = L.marker([point.geoLat, point.geoLng], { icon: customIcon }).addTo(map);
-        if (marker.on) {
-          marker.on('click', () => {
-            setSelectedPoint(point);
-            map.setView([point.geoLat, point.geoLng], 8, { animate: true });
-          });
-        }
-      });
+    // Cleanup Function: Hapus map saat komponen di-unmount
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMapReady]); // Hanya jalankan saat map ready
 
-      if (L.heatLayer) {
-        const heat = L.heatLayer(MOCK_TIMELINE_DATA[currentYear], {
+  // 3. Handle Map Type Change
+  useEffect(() => {
+    if (!mapInstanceRef.current || !window.L) return;
+    
+    const map = mapInstanceRef.current;
+    if (tileLayerRef.current) map.removeLayer(tileLayerRef.current);
+
+    const newUrl = mapType === 'satellite' 
+      ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+      : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+    
+    const newLayer = window.L.tileLayer(newUrl, {
+      attribution: mapType === 'satellite' ? 'Esri &copy; DigitalGlobe' : '&copy; CARTO'
+    });
+    newLayer.addTo(map);
+    tileLayerRef.current = newLayer;
+  }, [mapType]);
+
+  // 4. Handle Timeline & Heatmap Updates
+  useEffect(() => {
+    if (!mapInstanceRef.current || !window.L || !window.L.heatLayer) return;
+
+    // Remove existing heatmap layer first (safer approach than setLatLngs for some versions)
+    if (heatLayerRef.current) {
+      mapInstanceRef.current.removeLayer(heatLayerRef.current);
+    }
+
+    if (showHeatmap) {
+      const heatData = MOCK_TIMELINE_DATA[currentYear] || [];
+      const newHeat = window.L.heatLayer(heatData, {
           radius: 25,
           blur: 15,
           maxZoom: 10,
           gradient: { 0.4: 'blue', 0.6: 'lime', 0.8: 'yellow', 1: 'red' }
-        }).addTo(map);
-        heatLayerRef.current = heat;
-      }
+      }).addTo(mapInstanceRef.current);
+      heatLayerRef.current = newHeat;
     }
-  }, [isMapReady]);
+  }, [currentYear, showHeatmap]);
 
-  // Handle Timeline Updates
-  useEffect(() => {
-    if (mapInstanceRef.current && heatLayerRef.current && window.L?.heatLayer) {
-      const heatData = MOCK_TIMELINE_DATA[currentYear] || [];
-      // Re-create or update heat layer
-      if (heatLayerRef.current.setLatLngs) {
-        heatLayerRef.current.setLatLngs(heatData);
-      } else {
-        mapInstanceRef.current.removeLayer(heatLayerRef.current);
-        const newHeat = window.L.heatLayer(heatData, {
-            radius: 25,
-            blur: 15,
-            maxZoom: 10,
-            gradient: { 0.4: 'blue', 0.6: 'lime', 0.8: 'yellow', 1: 'red' }
-        }).addTo(mapInstanceRef.current);
-        heatLayerRef.current = newHeat;
-      }
-    }
-  }, [currentYear]);
-
-  // Playback Logic
+  // 5. Playback Logic
   useEffect(() => {
     if (isPlaying) {
       playIntervalRef.current = setInterval(() => {
@@ -176,28 +217,10 @@ export default function InteractiveMap() {
     return () => { if (playIntervalRef.current) clearInterval(playIntervalRef.current); };
   }, [isPlaying]);
 
-  // Handle Layer Toggle
-  useEffect(() => {
-    if (mapInstanceRef.current && window.L) {
-      const map = mapInstanceRef.current;
-      if (layerRef.current) map.removeLayer(layerRef.current);
-
-      const newUrl = mapType === 'satellite' 
-        ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-        : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-      
-      const newLayer = window.L.tileLayer(newUrl, {
-        attribution: mapType === 'satellite' ? 'Esri &copy; DigitalGlobe' : '&copy; CARTO'
-      });
-      newLayer.addTo(map);
-      layerRef.current = newLayer;
-    }
-  }, [mapType]);
-
   return (
     <div className="min-h-screen pt-24 bg-slate-50 pb-20">
       <div className="container mx-auto px-6">
-        <div className="text-center mb-12">
+        <div className="text-center mb-12 animate-fade-in-up">
           <h2 className="text-3xl md:text-4xl font-bold text-slate-800 mb-4">Monitoring Hutan <span className="text-emerald-600">Real-time</span></h2>
           <p className="text-slate-600 max-w-2xl mx-auto">
             Gunakan kontrol timeline untuk membandingkan laju deforestasi dari tahun ke tahun dan deteksi dini area kritis.
@@ -285,9 +308,9 @@ export default function InteractiveMap() {
                 <div className="flex items-center gap-3">
                   <button 
                     onClick={() => setIsPlaying(!isPlaying)}
-                    className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isPlaying ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200'}`}
+                    className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isPlaying ? 'bg-orange-100 text-orange-600 ring-2 ring-orange-200' : 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200'}`}
                   >
-                    {isPlaying ? <Pause fill="currentColor" /> : <Play fill="currentColor" className="ml-1" />}
+                    {isPlaying ? <Pause fill="currentColor" size={20} /> : <Play fill="currentColor" className="ml-1" size={20} />}
                   </button>
                   <button 
                     onClick={() => {setCurrentYear(YEARS[0]); setIsPlaying(false);}}
@@ -307,7 +330,7 @@ export default function InteractiveMap() {
                       value={currentYear}
                       onChange={(e) => {
                         const val = parseInt(e.target.value);
-                        // Temukan tahun terdekat dari YEARS array
+                        // Snap logic untuk memastikan value selalu ada di array YEARS
                         const closest = YEARS.reduce((prev, curr) => Math.abs(curr - val) < Math.abs(prev - val) ? curr : prev);
                         setCurrentYear(closest);
                         setIsPlaying(false);
@@ -328,7 +351,7 @@ export default function InteractiveMap() {
                       <button 
                         key={year}
                         onClick={() => {setCurrentYear(year); setIsPlaying(false);}}
-                        className={`text-xs font-bold transition-all ${currentYear === year ? 'text-emerald-600 scale-110' : 'text-slate-400 hover:text-slate-600'}`}
+                        className={`text-xs font-bold transition-all ${currentYear === year ? 'text-emerald-600 scale-125' : 'text-slate-400 hover:text-slate-600'}`}
                       >
                         {year}
                       </button>
@@ -341,7 +364,7 @@ export default function InteractiveMap() {
 
           {/* Sidebar Detail */}
           <div className="space-y-6">
-            <div className="bg-white rounded-2xl p-6 shadow-lg border border-slate-100">
+            <div className="bg-white rounded-2xl p-6 shadow-lg border border-slate-100 h-fit">
               <h3 className="font-bold text-lg text-slate-800 mb-4 flex items-center gap-2">
                 <Activity className="w-5 h-5 text-emerald-600"/> Analisis Timeline
               </h3>
@@ -359,8 +382,8 @@ export default function InteractiveMap() {
                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500 pt-4 border-t border-slate-100">
                   <div className="flex justify-between items-start">
                     <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
-                      selectedPoint.status === 'critical' ? 'bg-red-100 text-red-600' : 
-                      selectedPoint.status === 'healthy' ? 'bg-emerald-100 text-emerald-600' : 'bg-yellow-100 text-yellow-600'
+                      selectedPoint.status === 'critical' ? 'bg-red-100 text-red-600 border border-red-200' : 
+                      selectedPoint.status === 'healthy' ? 'bg-emerald-100 text-emerald-600 border border-emerald-200' : 'bg-yellow-100 text-yellow-600 border border-yellow-200'
                     }`}>
                       {selectedPoint.status}
                     </span>
@@ -372,15 +395,20 @@ export default function InteractiveMap() {
                   <div className="grid grid-cols-2 gap-4">
                      <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                         <p className="text-xs text-slate-500 mb-1">Intensitas API</p>
-                        <p className="font-bold text-slate-800 text-lg">{selectedPoint.intensity}/10</p>
+                        <p className="font-bold text-slate-800 text-lg flex items-center gap-1">
+                          {selectedPoint.intensity}<span className="text-xs text-slate-400 font-normal">/10</span>
+                        </p>
+                        <div className="w-full bg-slate-200 h-1.5 rounded-full mt-1">
+                          <div className={`h-full rounded-full ${selectedPoint.intensity > 7 ? 'bg-red-500' : 'bg-emerald-500'}`} style={{width: `${selectedPoint.intensity * 10}%`}}></div>
+                        </div>
                      </div>
                      <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                         <p className="text-xs text-slate-500 mb-1">Status Area</p>
-                        <p className="font-bold text-slate-800 text-sm">Terpantau</p>
+                        <p className="font-bold text-slate-800 text-sm">Terpantau Satelit</p>
                      </div>
                   </div>
 
-                  <button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl font-bold transition-all shadow-lg shadow-emerald-500/20 transform hover:-translate-y-1">
+                  <button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl font-bold transition-all shadow-lg shadow-emerald-500/20 transform hover:-translate-y-1 active:scale-95">
                     Donasi Pemulihan Area
                   </button>
                 </div>
@@ -393,7 +421,7 @@ export default function InteractiveMap() {
             </div>
 
             <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden group">
-               <div className="absolute -right-6 -bottom-6 opacity-10 transform rotate-12 group-hover:scale-110 transition-transform">
+               <div className="absolute -right-6 -bottom-6 opacity-10 transform rotate-12 group-hover:scale-110 transition-transform duration-500">
                  <Activity size={120} />
                </div>
                <h3 className="font-bold mb-3 relative z-10 flex items-center gap-2">

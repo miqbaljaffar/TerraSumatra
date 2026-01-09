@@ -1,23 +1,49 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CreditCard, CheckCircle2, Users, Trophy, Medal, Building2, User, Crown } from 'lucide-react';
+import { CreditCard, CheckCircle2, Users, Trophy, Medal, Building2, User, Crown, Loader2 } from 'lucide-react';
 import { Donation, MOCK_LEADERBOARD } from '../lib/definitions';
 
 export default function DonationSection() {
   const [amount, setAmount] = useState<number>(50000);
+  const [customAmount, setCustomAmount] = useState<string>('');
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  
+  // UI States
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [viewMode, setViewMode] = useState<'recent' | 'leaderboard'>('leaderboard');
   const [donations, setDonations] = useState<Donation[]>([
     { id: 1, name: "Budi Santoso", amount: 50000, message: "Semoga Aceh cepat pulih", timestamp: new Date() },
     { id: 2, name: "Siti Aminah", amount: 100000, message: "Untuk masa depan anak cucu", timestamp: new Date() },
     { id: 3, name: "Hamba Allah", amount: 250000, message: "Sedekah bumi", timestamp: new Date() }
   ]);
-  const [name, setName] = useState("");
-  const [message, setMessage] = useState("");
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [viewMode, setViewMode] = useState<'recent' | 'leaderboard'>('leaderboard');
 
-  const handleDonate = (e: React.FormEvent) => {
+  const handleAmountChange = (val: number) => {
+    setAmount(val);
+    setCustomAmount('');
+  };
+
+  const handleCustomAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/\D/g, ''); // Hanya angka
+    setCustomAmount(val);
+    setAmount(val ? parseInt(val) : 0);
+  };
+
+  const handleDonate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (amount < 10000) {
+        alert("Minimal donasi Rp 10.000");
+        return;
+    }
+
+    setIsSubmitting(true);
+    
+    // Simulasi API Call
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
     const newDonation: Donation = {
       id: donations.length + 1,
       name: name || "Anonim",
@@ -25,11 +51,20 @@ export default function DonationSection() {
       message,
       timestamp: new Date()
     };
+    
     setDonations([newDonation, ...donations]);
+    
+    // Reset Form
     setName("");
+    setEmail("");
     setMessage("");
+    setCustomAmount("");
+    setAmount(50000); // Reset ke default
+    setIsSubmitting(false);
     setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 3000);
+    
+    // Auto switch ke tab recent untuk melihat donasi sendiri
+    setViewMode('recent');
   };
 
   const getRankIcon = (index: number) => {
@@ -51,7 +86,7 @@ export default function DonationSection() {
   };
 
   return (
-    <div className="min-h-screen pt-24 pb-20 bg-slate-50">
+    <div className="min-h-screen pt-24 pb-20 bg-slate-50" id="donation">
       <div className="container mx-auto px-6">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold text-slate-800 mb-4">Bergabung dalam <span className="text-emerald-600">Reboisasi</span></h2>
@@ -65,16 +100,16 @@ export default function DonationSection() {
           <div className="bg-white rounded-[2rem] p-8 shadow-xl border border-slate-100 relative overflow-hidden h-fit">
              {showSuccess && (
                <div className="absolute inset-0 bg-white/95 backdrop-blur-sm z-20 flex flex-col items-center justify-center text-center p-6 animate-in fade-in duration-300">
-                 <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-6 shadow-inner">
+                 <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-6 shadow-inner animate-in zoom-in duration-500">
                    <CheckCircle2 className="w-10 h-10 text-emerald-600" />
                  </div>
                  <h3 className="text-2xl font-bold text-slate-800 mb-2">Terima Kasih, Pahlawan!</h3>
-                 <p className="text-slate-600 max-w-xs mx-auto">Donasi Anda telah tercatat. Nama Anda akan segera muncul di feed donasi.</p>
+                 <p className="text-slate-600 max-w-xs mx-auto mb-6">Donasi Anda telah tercatat. Nama Anda akan segera muncul di feed donasi.</p>
                  <button 
                   onClick={() => setShowSuccess(false)}
-                  className="mt-6 text-emerald-600 font-bold text-sm hover:underline"
+                  className="px-6 py-2 bg-emerald-100 text-emerald-700 rounded-full font-bold text-sm hover:bg-emerald-200 transition-colors"
                  >
-                   Kembali
+                   Donasi Lagi
                  </button>
                </div>
              )}
@@ -91,25 +126,39 @@ export default function DonationSection() {
 
              <form onSubmit={handleDonate} className="space-y-6">
                <div>
-                 <label className="block text-sm font-bold text-slate-700 mb-3">Pilih Bibit Pohon</label>
-                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                 <label className="block text-sm font-bold text-slate-700 mb-3">Pilih Nominal Bibit</label>
+                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                    {[50000, 100000, 250000].map((val) => (
                      <button
                        type="button"
                        key={val}
-                       onClick={() => setAmount(val)}
-                       className={`py-4 px-4 rounded-xl text-sm font-bold border-2 transition-all relative overflow-hidden ${
-                         amount === val 
+                       onClick={() => handleAmountChange(val)}
+                       className={`py-4 px-4 rounded-xl text-sm font-bold border-2 transition-all relative overflow-hidden group ${
+                         amount === val && !customAmount
                            ? 'bg-emerald-50 text-emerald-700 border-emerald-500 shadow-sm' 
                            : 'bg-white text-slate-500 border-slate-100 hover:border-emerald-200 hover:bg-slate-50'
                        }`}
                      >
-                       <span className="relative z-10 block text-xs font-normal opacity-70 mb-1">
+                       <span className="relative z-10 block text-xs font-normal opacity-70 mb-1 group-hover:text-emerald-600">
                          {val === 50000 ? '1 Bibit' : val === 100000 ? '2 Bibit' : '5 Bibit'}
                        </span>
                        <span className="relative z-10">Rp {val.toLocaleString('id-ID')}</span>
                      </button>
                    ))}
+                 </div>
+                 
+                 {/* Custom Amount Input */}
+                 <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">Rp</span>
+                    <input 
+                      type="text"
+                      value={customAmount ? parseInt(customAmount).toLocaleString('id-ID') : ''}
+                      onChange={handleCustomAmountChange}
+                      placeholder="Atau masukkan nominal lainnya..."
+                      className={`w-full pl-10 pr-4 py-3 rounded-xl border-2 outline-none transition-all font-semibold ${
+                        customAmount ? 'border-emerald-500 bg-emerald-50/30' : 'border-slate-100 bg-slate-50 focus:border-emerald-300 focus:bg-white'
+                      }`}
+                    />
                  </div>
                </div>
 
@@ -122,12 +171,15 @@ export default function DonationSection() {
                       onChange={(e) => setName(e.target.value)}
                       className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-emerald-500 focus:ring-0 outline-none transition-all bg-slate-50 focus:bg-white"
                       placeholder="Nama Anda / Organisasi"
+                      required
                     />
                  </div>
                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Email (Opsional)</label>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">Email <span className="text-slate-300 font-normal">(Opsional)</span></label>
                     <input 
                       type="email" 
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-emerald-500 focus:ring-0 outline-none transition-all bg-slate-50 focus:bg-white"
                       placeholder="email@contoh.com"
                     />
@@ -144,8 +196,18 @@ export default function DonationSection() {
                   ></textarea>
                </div>
 
-               <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-xl shadow-emerald-500/20 transition-all transform hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-2">
-                 <span>Tanam {Math.floor(amount/50000)} Pohon Sekarang</span>
+               <button 
+                type="submit" 
+                disabled={isSubmitting || amount < 10000}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl shadow-xl shadow-emerald-500/20 transition-all transform hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-2"
+               >
+                 {isSubmitting ? (
+                   <>
+                    <Loader2 className="w-5 h-5 animate-spin" /> Memproses...
+                   </>
+                 ) : (
+                   <span>Tanam {Math.max(1, Math.floor(amount/50000))} Pohon Sekarang</span>
+                 )}
                </button>
                
                <p className="text-[10px] text-center text-slate-400 flex items-center justify-center gap-1">
@@ -181,7 +243,7 @@ export default function DonationSection() {
             </div>
 
             {/* List Container */}
-            <div className="flex-1 bg-white rounded-[2rem] p-6 shadow-xl border border-slate-100 relative overflow-hidden">
+            <div className="flex-1 bg-white rounded-[2rem] p-6 shadow-xl border border-slate-100 relative overflow-hidden min-h-[500px]">
                 <div className="absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-white to-transparent z-10"></div>
                 
                 <div className="space-y-4 h-[600px] overflow-y-auto pr-2 custom-scrollbar pb-8 pt-2">
@@ -226,14 +288,14 @@ export default function DonationSection() {
                   ) : (
                     // Recent Donations View
                     donations.map((d, i) => (
-                      <div key={d.id} className={`bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-start gap-4 transition-all hover:shadow-md ${i === 0 ? 'animate-fade-in bg-emerald-50/50 border-emerald-100' : ''}`}>
-                         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm">
+                      <div key={d.id} className={`bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-start gap-4 transition-all hover:shadow-md ${i === 0 ? 'animate-in slide-in-from-top-4 bg-emerald-50/50 border-emerald-100' : ''}`}>
+                         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm ring-2 ring-emerald-100">
                            {d.name.charAt(0)}
                          </div>
                          <div className="flex-1">
                             <div className="flex justify-between items-start mb-1">
                               <h4 className="font-bold text-slate-800">{d.name}</h4>
-                              <span className="text-[10px] text-slate-400">Baru saja</span>
+                              <span className="text-[10px] text-slate-400">{i === 0 ? 'Baru saja' : '2j lalu'}</span>
                             </div>
                             <p className="text-emerald-600 font-semibold text-sm flex items-center gap-1">
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
